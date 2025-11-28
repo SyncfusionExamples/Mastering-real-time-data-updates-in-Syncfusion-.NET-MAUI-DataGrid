@@ -14,25 +14,25 @@
             <local:TextForegroundConverter x:Key="textForegroundConverter" />
             <local:ImageConverter x:Key="imageConverter" />
         </ResourceDictionary>
+        <Style TargetType="sfgrid:DataGridHeaderCell">
+            <Setter Property="FontAttributes" Value="Bold"/>
+        </Style>
     </ContentPage.Resources>
 
+
     <sfgrid:SfDataGrid x:Name="dataGrid"                   
-                       x:DataType="local:StockViewModel"
-                       ItemsSource="{Binding Stocks}"
-                       ColumnWidthMode="Fill"
-                       AutoGenerateColumnsMode="None"
-                       HorizontalScrollBarVisibility="Always"
-                       VerticalScrollBarVisibility="Always">
+                   x:DataType="local:StockViewModel"
+                   ItemsSource="{Binding Stocks}"               
+                   AutoGenerateColumnsMode="None"
+                   HorizontalScrollBarVisibility="Always"
+                   VerticalScrollBarVisibility="Always">
 
         <sfgrid:SfDataGrid.Columns>
-            <sfgrid:DataGridTextColumn           
-            MappingName="Symbol"
-            HeaderText="Symbol"/>
+            <!-- Symbol Column -->
+            <sfgrid:DataGridTextColumn MappingName="Symbol" HeaderText="Symbol" HeaderTextAlignment="Center" CellTextAlignment="Center"/>
 
-            <sfgrid:DataGridTemplateColumn           
-            HeaderText="Stock"
-            MappingName="StockChange">
-
+            <!-- Stock Column -->
+            <sfgrid:DataGridTemplateColumn HeaderText="Stock" MappingName="StockChange">
                 <sfgrid:DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid HorizontalOptions="Center" VerticalOptions="Center" ColumnSpacing="15">
@@ -44,15 +44,14 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <Label
-                           x:Name="label"
-                            Grid.Row="0"
-                            Grid.Column="0"
-                            FontSize="40"                           
-                            x:DataType="local:Stock"
-                            Text="{Binding StockChange,
-                            Converter={StaticResource imageConverter}, 
-                            ConverterParameter={x:Reference label}}" />
+                            <Label x:Name="label"
+                               Grid.Row="0"
+                               Grid.Column="0"
+                               FontSize="40"
+                               x:DataType="local:Stock"
+                               Text="{Binding StockChange,
+                               Converter={StaticResource imageConverter}, 
+                               ConverterParameter={x:Reference label}}" />
 
                             <Label x:Name="changeValue"
                                Grid.Row="0"
@@ -62,45 +61,43 @@
                                Converter={StaticResource imageConverter}}"
                                VerticalTextAlignment="Center"
                                FontSize="14" />
-
                         </Grid>
                     </DataTemplate>
                 </sfgrid:DataGridTemplateColumn.CellTemplate>
             </sfgrid:DataGridTemplateColumn>
 
-            <sfgrid:DataGridTextColumn
-            CellTextAlignment="Center"
-            HeaderTextAlignment="Center"
-            
-            HeaderText="Open"
-            MappingName="Open">
+            <!-- Open Column -->
+            <sfgrid:DataGridTextColumn CellTextAlignment="Center"
+                                   HeaderTextAlignment="Center"
+                                   HeaderText="Open"
+                                   MappingName="Open">
+               
             </sfgrid:DataGridTextColumn>
 
-            <sfgrid:DataGridTextColumn
-            HeaderText="Previous Close"
-            MappingName="PreviousClose"
-            />
+            <!-- Previous Close Column -->
+            <sfgrid:DataGridTextColumn HeaderText="Previous" MappingName="PreviousClose" HeaderTextAlignment="Center" CellTextAlignment="Center">
+               
+            </sfgrid:DataGridTextColumn>
 
-
-            <sfgrid:DataGridTemplateColumn
-            HeaderText="Last Trade"
-                HeaderTextAlignment="Start"
-                CellTextAlignment="Start"
-            MappingName="LastTrade">
+            <!-- Last Trade Column -->
+            <sfgrid:DataGridTemplateColumn HeaderText="Last Trade"
+                                       HeaderTextAlignment="Center"
+                                       CellTextAlignment="Center"
+                                       MappingName="LastTrade">
+                
                 <sfgrid:DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Label x:Name="lasttradeValue"
                            x:DataType="local:Stock"
                            Text="{Binding LastTrade}"
                            TextColor="{Binding LastTrade,
-                                               Converter={StaticResource textForegroundConverter}}"
-                           VerticalTextAlignment="Center">
+                                       Converter={StaticResource textForegroundConverter}}"
+                           VerticalTextAlignment="Center" HorizontalOptions="Center">
                         </Label>
-
                     </DataTemplate>
                 </sfgrid:DataGridTemplateColumn.CellTemplate>
             </sfgrid:DataGridTemplateColumn>
         </sfgrid:SfDataGrid.Columns>
-
     </sfgrid:SfDataGrid>
+
 </ContentPage>
