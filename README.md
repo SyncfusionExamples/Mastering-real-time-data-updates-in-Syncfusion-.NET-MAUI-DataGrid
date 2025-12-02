@@ -40,16 +40,19 @@ Example:
 
 ```C#
 
-object? IValueConverter.Convert(object? value, Type targetType, object? parameter, CultureInfo info)
+internal class TextForegroundConverter : IValueConverter
 {
-    var data = value as double?;
-    if (data != null && data > 10)
+    object? IValueConverter.Convert(object? value, Type targetType, object? parameter, CultureInfo info)
     {
-        return Colors.Green; // Positive value
-    }
-    else
-    {
-        return Colors.Red; // Negative or low value
+        var data = value as double?;
+        if (data != null && data > 10)
+        {
+            return Colors.Green; // Positive value
+        }
+        else
+        {
+            return Colors.Red; // Negative or low value
+        }
     }
 }
 ```
