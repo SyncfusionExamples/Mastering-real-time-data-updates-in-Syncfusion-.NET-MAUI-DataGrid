@@ -5,12 +5,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace DataGridLiveDataUpdateSample
 {
+    /// <summary>
+    /// Represents a stock entity with properties for symbol, account, trade details, and volume.
+    /// Implements <see cref="INotifyPropertyChanged"/> for real-time UI updates in .NET MAUI DataGrid.
+    /// </summary>
     public class Stock : INotifyPropertyChanged
     {
         #region Private Members
-
         private string? symbol;
         private string? account;
         private double lastTrade;
@@ -18,155 +22,121 @@ namespace DataGridLiveDataUpdateSample
         private double previousClose;
         private double open;
         private long volume;
-
         #endregion
 
+        /// <summary>
+        /// Event triggered when a property value changes.
+        /// Used for data binding updates in the UI.
+        /// </summary>
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        #region Public properties
+        #region Public Properties
 
         /// <summary>
-        /// Gets or sets the stock change.
+        /// Gets or sets the stock change indicator.
         /// </summary>
-        /// <value>The stock change.</value>
         public string? StockChange
         {
-            get
-            {
-                return this.stockChange;
-            }
-
+            get => this.stockChange;
             set
             {
                 this.stockChange = value;
-                this.RaisePropertyChanged("StockChange");
+                this.RaisePropertyChanged(nameof(StockChange));
             }
         }
 
         /// <summary>
-        /// Gets or sets the open.
+        /// Gets or sets the opening price of the stock.
         /// </summary>
-        /// <value>The open.</value>
         public double Open
         {
-            get
-            {
-                return this.open;
-            }
-
+            get => this.open;
             set
             {
                 this.open = value;
-                this.RaisePropertyChanged("Open");
+                this.RaisePropertyChanged(nameof(Open));
             }
         }
 
         /// <summary>
-        /// Gets or sets the last trade.
+        /// Gets or sets the last traded price of the stock.
         /// </summary>
-        /// <value>The last trade.</value>
         public double LastTrade
         {
-            get
-            {
-                return this.lastTrade;
-            }
-
+            get => this.lastTrade;
             set
             {
                 this.lastTrade = value;
-                this.RaisePropertyChanged("LastTrade");
+                this.RaisePropertyChanged(nameof(LastTrade));
             }
         }
 
         /// <summary>
-        /// Gets or sets the previous close.
+        /// Gets or sets the previous closing price of the stock.
         /// </summary>
-        /// <value>The previous close.</value>
         public double PreviousClose
         {
-            get
-            {
-                return this.previousClose;
-            }
-
+            get => this.previousClose;
             set
             {
                 this.previousClose = value;
-                this.RaisePropertyChanged("PreviousClose");
+                this.RaisePropertyChanged(nameof(PreviousClose));
             }
         }
 
         /// <summary>
-        /// Gets or sets the symbol.
+        /// Gets or sets the stock symbol
         /// </summary>
-        /// <value>The symbol.</value>
         public string? Symbol
         {
-            get
-            {
-                return this.symbol;
-            }
-
+            get => this.symbol;
             set
             {
                 this.symbol = value;
-                this.RaisePropertyChanged("Symbol");
+                this.RaisePropertyChanged(nameof(Symbol));
             }
         }
 
         /// <summary>
-        /// Gets or sets the account.
+        /// Gets or sets the account associated with the stock.
         /// </summary>
-        /// <value>The account.</value>
         public string? Account
         {
-            get
-            {
-                return this.account;
-            }
-
+            get => this.account;
             set
             {
                 this.account = value;
-                this.RaisePropertyChanged("Account");
+                this.RaisePropertyChanged(nameof(Account));
             }
         }
 
         /// <summary>
-        /// Gets or sets the volume.
+        /// Gets or sets the trading volume for the stock.
         /// </summary>
-        /// <value>The volume.</value>
         public long Volume
         {
-            get
-            {
-                return this.volume;
-            }
-
+            get => this.volume;
             set
             {
                 this.volume = value;
-                this.RaisePropertyChanged("Volume");
+                this.RaisePropertyChanged(nameof(Volume));
             }
         }
 
         #endregion
 
-        #region INotifyPropertyChanged implementation
+        #region INotifyPropertyChanged Implementation
 
         /// <summary>
-        /// Triggers when Items Collections Changed.
+        /// Raises the <see cref="PropertyChanged"/> event for the specified property.
         /// </summary>
-        /// <param name="propertyName">string type of parameter propertyName</param>
+        /// <param name="propertyName">The name of the property that changed.</param>
         public void RaisePropertyChanged(string propertyName)
         {
-            if (this.PropertyChanged != null)
-            {
-                this.PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         #endregion
     }
 }
+

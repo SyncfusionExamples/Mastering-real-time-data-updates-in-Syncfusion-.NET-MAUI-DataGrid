@@ -9,8 +9,13 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+
 namespace DataGridLiveDataUpdateSample
 {
+    /// <summary>
+    /// ViewModel for managing live stock data updates in a .NET MAUI DataGrid.
+    /// Implements <see cref="INotifyPropertyChanged"/> for UI binding and <see cref="IDisposable"/> for resource cleanup.
+    /// </summary>
     public class StockViewModel : INotifyPropertyChanged, IDisposable
     {
         #region Members
@@ -31,10 +36,13 @@ namespace DataGridLiveDataUpdateSample
             "Housing Loans"
         };
 
+        #endregion
+
         #region Constructor
 
         /// <summary>
-        /// Initializes a new instance of the RenderingDynamicDataViewModel class. 
+        /// Initializes a new instance of the <see cref="StockViewModel"/> class.
+        /// Populates initial stock data and starts the refresh timer.
         /// </summary>
         public StockViewModel()
         {
@@ -46,50 +54,37 @@ namespace DataGridLiveDataUpdateSample
         #endregion
 
         /// <summary>
-        /// Represents the method that will handle the <see cref="E:System.ComponentModel.INotifyPropertyChanged.PropertyChanged"></see> event raised when a property is changed on a component
+        /// Event triggered when a property value changes for data binding updates.
         /// </summary>
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        #endregion
-
         /// <summary>
-        /// Gets the stocks.
+        /// Gets the collection of stock data displayed in the DataGrid.
         /// </summary>
-        /// <value>The stocks.</value>
-        public ObservableCollection<Stock> Stocks
-        {
-            get { return this.data; }
-        }
+        public ObservableCollection<Stock> Stocks => this.data;
 
         /// <summary>
-        /// Gets or sets the value of SelectedItem notifies user when value gets changed
+        /// Gets or sets the selected item (used for UI binding).
         /// </summary>
         public object SelectedItem
         {
-            get
-            {
-                return this.noOfUpdates;
-            }
-
+            get => this.noOfUpdates;
             set
             {
                 this.noOfUpdates = 2;
-                this.RaisePropertyChanged("SelectedItem");
+                this.RaisePropertyChanged(nameof(SelectedItem));
             }
         }
 
         /// <summary>
-        /// Gets the value of ComboCollection
+        /// Gets a collection of refresh frequency options for the UI ComboBox.
         /// </summary>
-        public List<int> ComboCollection
-        {
-            get { return new List<int> { 500, 5000, 50000, 500000 }; }
-        }
+        public List<int> ComboCollection => new List<int> { 500, 5000, 50000, 500000 };
 
-        #region Timer and updating code
+        #region Timer and Updating Code
 
         /// <summary>
-        /// Starts the timer.
+        /// Starts the timer for periodic stock data updates.
         /// </summary>
         public void StartTimer()
         {
@@ -99,15 +94,18 @@ namespace DataGridLiveDataUpdateSample
             timer.Tick += Timer_Elapsed;
         }
 
+        /// <summary>
+        /// Handles the timer tick event and triggers data updates.
+        /// </summary>
         private void Timer_Elapsed(object? sender, EventArgs e)
         {
             this.Timer_Tick();
         }
 
         /// <summary>
-        /// Used to reset the refresh frequency
+        /// Resets the refresh frequency and restarts the timer.
         /// </summary>
-        /// <param name="changesPerTick">integer type parameter changesPerTick</param>
+        /// <param name="changesPerTick">Number of changes per tick.</param>
         public void ResetRefreshFrequency(int changesPerTick)
         {
             this.noOfUpdates = changesPerTick;
@@ -115,19 +113,18 @@ namespace DataGridLiveDataUpdateSample
         }
 
         /// <summary>
-        /// Handles the Tick event of the timer control.
+        /// Updates random rows in the stock collection on each timer tick.
         /// </summary>
         private void Timer_Tick()
         {
-            int startTime = DateTime.Now.Millisecond;
             this.noOfUpdates = 100;
             this.ChangeRows(this.noOfUpdates);
         }
 
         /// <summary>
-        /// Adds the rows.
+        /// Adds initial rows of stock data to the collection.
         /// </summary>
-        /// <param name="count">The given count.</param>
+        /// <param name="count">Number of rows to add.</param>
         private void AddRows(int count)
         {
             for (int i = 0; i < count; ++i)
@@ -154,12 +151,12 @@ namespace DataGridLiveDataUpdateSample
         }
 
         /// <summary>
-        /// Changes the symbol.
+        /// Generates a unique random stock symbol.
         /// </summary>
-        /// <returns>returns builder value</returns>
+        /// <returns>A 4-character stock symbol.</returns>
         private string ChangeSymbol()
         {
-            StringBuilder builder = new StringBuilder();
+            StringBuilder builder;
             Random random = new Random();
             char ch;
 
@@ -173,24 +170,24 @@ namespace DataGridLiveDataUpdateSample
                 }
             }
             while (this.stockSymbols.Contains(builder.ToString()));
+
             this.stockSymbols.Add(builder.ToString());
             return builder.ToString();
         }
 
         /// <summary>
-        /// Changes the account.
+        /// Returns an account name based on the given index.
         /// </summary>
-        /// <param name="index">The index.</param>
-        /// <returns>returns the get calculated value</returns>
+        /// <param name="index">Index for account selection.</param>
         private string ChangeAccount(int index)
         {
             return this.accounts[index % this.accounts.Length];
         }
 
         /// <summary>
-        /// Changes the rows.
+        /// Randomly updates existing rows in the stock collection.
         /// </summary>
-        /// <param name="count">The count.</param>
+        /// <param name="count">Number of rows to update.</param>
         private void ChangeRows(int count)
         {
             if (this.data.Count < count)
@@ -223,25 +220,25 @@ namespace DataGridLiveDataUpdateSample
 
         #endregion
 
-        #region INotifyPropertyChanged implementation
+        #region INotifyPropertyChanged Implementation
 
         /// <summary>
-        /// Triggers when Items Collections Changed.
+        /// Raises the <see cref="PropertyChanged"/> event for the specified property.
         /// </summary>
-        /// <param name="name">string type of name</param>
+        /// <param name="name">The property name that changed.</param>
         private void RaisePropertyChanged(string name)
         {
-            if (this.PropertyChanged != null)
-            {
-                this.PropertyChanged(this, new PropertyChangedEventArgs(name));
-            }
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
 
+        /// <summary>
+        /// Disposes resources and stops the timer.
+        /// </summary>
         public void Dispose()
         {
             if (timer != null)
             {
-                timer!.Tick -= Timer_Elapsed;
+                timer.Tick -= Timer_Elapsed;
                 timer.Stop();
                 timer = null;
             }
@@ -250,3 +247,4 @@ namespace DataGridLiveDataUpdateSample
         #endregion
     }
 }
+

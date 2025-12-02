@@ -24,6 +24,38 @@ In today’s fast-paced digital world, real-time data is no longer a luxury—it
 
 ---
 
+## **Enhance UX with Visual Indicators**
+
+Add **color coding** or **icons** to indicate trends:
+
+*   Green for positive changes
+*   Red for negative changes
+*   Up/down arrows for stock movements
+
+Example:
+
+```xml
+<Label Text="{Binding LastTrade}" TextColor="{Binding LastTrade, Converter={StaticResource TextForegroundConverter}}" />
+```
+
+```C#
+
+object? IValueConverter.Convert(object? value, Type targetType, object? parameter, CultureInfo info)
+{
+    var data = value as double?;
+    if (data != null && data > 10)
+    {
+        return Colors.Green; // Positive value
+    }
+    else
+    {
+        return Colors.Red; // Negative or low value
+    }
+}
+```
+
+***
+
 ## Run the App
 When you run the app on **Android, iOS, Windows, or macOS**, your DataGrid will breathe with data updates every second.
 
