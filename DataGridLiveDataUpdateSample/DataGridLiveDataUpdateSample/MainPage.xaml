@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:DataGridLiveDataUpdateSample"
-             xmlns:sfgrid="clr-namespace:Syncfusion.Maui.DataGrid;assembly=Syncfusion.Maui.DataGrid"
+             xmlns:grid="clr-namespace:Syncfusion.Maui.DataGrid;assembly=Syncfusion.Maui.DataGrid"
              x:Class="DataGridLiveDataUpdateSample.MainPage">
 
     <ContentPage.BindingContext>
@@ -14,26 +14,26 @@
             <local:TextForegroundConverter x:Key="textForegroundConverter" />
             <local:ImageConverter x:Key="imageConverter" />
         </ResourceDictionary>
-        <Style TargetType="sfgrid:DataGridHeaderCell">
+        <Style TargetType="grid:DataGridHeaderCell">
             <Setter Property="FontAttributes" Value="Bold"/>
         </Style>
     </ContentPage.Resources>
 
 
-    <sfgrid:SfDataGrid x:Name="dataGrid"                   
+    <grid:SfDataGrid x:Name="dataGrid"                   
                    x:DataType="local:StockViewModel"
                    ItemsSource="{Binding Stocks}"               
                    AutoGenerateColumnsMode="None"
                    HorizontalScrollBarVisibility="Always"
                    VerticalScrollBarVisibility="Always">
 
-        <sfgrid:SfDataGrid.Columns>
+        <grid:SfDataGrid.Columns>
             <!-- Symbol Column -->
-            <sfgrid:DataGridTextColumn MappingName="Symbol" HeaderText="Symbol" HeaderTextAlignment="Center" CellTextAlignment="Center"/>
+            <grid:DataGridTextColumn MappingName="Symbol" HeaderText="Symbol" HeaderTextAlignment="Center" CellTextAlignment="Center"/>
 
             <!-- Stock Column -->
-            <sfgrid:DataGridTemplateColumn HeaderText="Stock" MappingName="StockChange">
-                <sfgrid:DataGridTemplateColumn.CellTemplate>
+            <grid:DataGridTemplateColumn HeaderText="Stock" MappingName="StockChange">
+                <grid:DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Grid HorizontalOptions="Center" VerticalOptions="Center" ColumnSpacing="15">
                             <Grid.RowDefinitions>
@@ -63,29 +63,29 @@
                                FontSize="14" />
                         </Grid>
                     </DataTemplate>
-                </sfgrid:DataGridTemplateColumn.CellTemplate>
-            </sfgrid:DataGridTemplateColumn>
+                </grid:DataGridTemplateColumn.CellTemplate>
+            </grid:DataGridTemplateColumn>
 
             <!-- Open Column -->
-            <sfgrid:DataGridTextColumn CellTextAlignment="Center"
+            <grid:DataGridTextColumn CellTextAlignment="Center"
                                    HeaderTextAlignment="Center"
                                    HeaderText="Open"
                                    MappingName="Open">
                
-            </sfgrid:DataGridTextColumn>
+            </grid:DataGridTextColumn>
 
             <!-- Previous Close Column -->
-            <sfgrid:DataGridTextColumn HeaderText="Previous" MappingName="PreviousClose" HeaderTextAlignment="Center" CellTextAlignment="Center">
+            <grid:DataGridTextColumn HeaderText="Previous" MappingName="PreviousClose" HeaderTextAlignment="Center" CellTextAlignment="Center">
                
-            </sfgrid:DataGridTextColumn>
+            </grid:DataGridTextColumn>
 
             <!-- Last Trade Column -->
-            <sfgrid:DataGridTemplateColumn HeaderText="Last Trade"
+            <grid:DataGridTemplateColumn HeaderText="Last Trade"
                                        HeaderTextAlignment="Center"
                                        CellTextAlignment="Center"
                                        MappingName="LastTrade">
                 
-                <sfgrid:DataGridTemplateColumn.CellTemplate>
+                <grid:DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                         <Label x:Name="lasttradeValue"
                            x:DataType="local:Stock"
@@ -95,9 +95,9 @@
                            VerticalTextAlignment="Center" HorizontalOptions="Center">
                         </Label>
                     </DataTemplate>
-                </sfgrid:DataGridTemplateColumn.CellTemplate>
-            </sfgrid:DataGridTemplateColumn>
-        </sfgrid:SfDataGrid.Columns>
-    </sfgrid:SfDataGrid>
+                </grid:DataGridTemplateColumn.CellTemplate>
+            </grid:DataGridTemplateColumn>
+        </grid:SfDataGrid.Columns>
+    </grid:SfDataGrid>
 
 </ContentPage>
