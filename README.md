@@ -4,14 +4,7 @@ This demo shows Mastering realtime data updates in .NET MAUI DataGrid.
 ---
 
 ## Introduction
-In today’s fast-paced digital world, real-time data is no longer a luxury—it’s a necessity. Whether you’re building a financial dashboard, an IoT monitoring app, or an e-commerce analytics tool, users expect instant updates without refreshing the screen.
-
-**.NET MAUI DataGrid** offers a powerful way to display and update data dynamically across platforms.
-
-## Why Live Data Updates Matter
-- Keep information fresh for better user trust and engagement
-- Support faster decisions with up-to-the-second data
-- Eliminate manual refresh actions and reduce cognitive load
+In today’s fast-paced digital world, real-time data is no longer a luxury—it’s a necessity. Whether you’re building a financial dashboard, an IoT monitoring app, or an e-commerce analytics tool, users expect instant updates without refreshing the screen.**.NET MAUI DataGrid** offers a powerful way to display and update data dynamically across platforms.
 
 ---
 
