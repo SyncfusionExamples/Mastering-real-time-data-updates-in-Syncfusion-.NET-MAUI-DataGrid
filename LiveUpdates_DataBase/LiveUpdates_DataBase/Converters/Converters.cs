@@ -2,9 +2,15 @@ using System.Globalization;
 
 namespace LiveUpdates_DataBase;
 
+/// <summary>
+/// Sign to Color converter
+/// </summary>
 public sealed class SignToColorConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    /// <summary>
+    /// Converts a numeric value to a color based on its sign.
+    /// </summary>
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null) return Colors.Gray;
         if (value is IConvertible c)
@@ -21,12 +27,21 @@ public sealed class SignToColorConverter : IValueConverter
         return Colors.Gray;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    /// <summary>
+    /// Convert back to any values.
+    /// </summary>
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
 }
 
+/// <summary>
+/// Sign to Arrow converter
+/// </summary>
 public sealed class SignToArrowConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    /// <summary>
+    /// Converts a numeric value to an arrow symbol based on its sign.
+    /// </summary>
+    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null) return string.Empty;
         if (value is IConvertible c)
@@ -43,5 +58,8 @@ public sealed class SignToArrowConverter : IValueConverter
         return string.Empty;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => throw new NotImplementedException();
+    /// <summary>
+    /// Convert back to any values.
+    /// </summary>
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) => throw new NotImplementedException();
 }
