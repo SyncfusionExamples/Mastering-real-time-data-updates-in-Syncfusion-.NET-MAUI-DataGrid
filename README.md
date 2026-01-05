@@ -64,7 +64,7 @@ When you run the app on **Android, iOS, Windows, or macOS**, your DataGrid will 
 
 No manual refreshes, no flickering - just smooth, seamless live updates powered by data binding and property change notifications.
 
-![Live Data Update in DataGrid](LiveDataUpdate.gif)
+![Live Data Update in DataGrid](LiveDataUpdates_Window.gif)
 
 ---
 ## Conclusion

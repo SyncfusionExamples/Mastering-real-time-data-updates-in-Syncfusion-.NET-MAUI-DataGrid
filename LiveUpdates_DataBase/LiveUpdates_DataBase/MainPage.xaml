@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:syncfusion="clr-namespace:Syncfusion.Maui.DataGrid;assembly=Syncfusion.Maui.DataGrid"
+             xmlns:local="clr-namespace:LiveUpdates_DataBase"
+             x:Class="LiveUpdates_DataBase.MainPage">
+
+    <ContentPage.Resources>
+        <local:SignToColorConverter x:Key="SignToColor"/>
+        <local:SignToArrowConverter x:Key="SignToArrow"/>
+        <Style TargetType="syncfusion:DataGridHeaderCell">
+            <Setter Property="TextColor" Value="Black"/>
+            <Setter Property="FontAttributes" Value="Bold"/>
+        </Style>
+    </ContentPage.Resources>
+
+    <ContentPage.BindingContext>
+        <local:StockViewModel />
+    </ContentPage.BindingContext>
+
+    <Grid RowDefinitions="*" Padding="12">
+        <syncfusion:SfDataGrid
+                         x:Name="grid"
+                         ItemsSource="{Binding Rows}"                       
+                         ColumnWidthMode="Auto"/>
+    </Grid>
+</ContentPage>
