@@ -8,22 +8,27 @@ namespace LiveUpdates_DataBase;
 public sealed class SignToColorConverter : IValueConverter
 {
     /// <summary>
-    /// Converts a numeric value to a color based on its sign.
+    /// Converts a numeric converter to a color based on its sign.
     /// </summary>
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null) return Colors.Gray;
-        if (value is IConvertible c)
+        if (value is IConvertible convert)
         {
-            try
+            var converter = System.Convert.ToDouble(convert, CultureInfo.InvariantCulture);
+            if (converter > 0)
             {
-                var d = System.Convert.ToDouble(c, CultureInfo.InvariantCulture);
-                if (d > 0) return Colors.ForestGreen;
-                if (d < 0) return Colors.IndianRed;
-                return Colors.Gray;
+                return Colors.ForestGreen;
             }
-            catch { }
+
+            if (converter < 0)
+            {
+                return Colors.IndianRed;
+            }
+
+            return Colors.Gray;
         }
+
         return Colors.Gray;
     }
 
@@ -39,22 +44,27 @@ public sealed class SignToColorConverter : IValueConverter
 public sealed class SignToArrowConverter : IValueConverter
 {
     /// <summary>
-    /// Converts a numeric value to an arrow symbol based on its sign.
+    /// Converts a numeric converter to an arrow symbol based on its sign.
     /// </summary>
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null) return string.Empty;
-        if (value is IConvertible c)
+        if (value is IConvertible convert)
         {
-            try
+            var converter = System.Convert.ToDouble(convert, CultureInfo.InvariantCulture);
+            if (converter > 0)
             {
-                var d = System.Convert.ToDouble(c, CultureInfo.InvariantCulture);
-                if (d > 0) return "▲"; // up triangle
-                if (d < 0) return "▼"; // down triangle
-                return string.Empty;
+                return "▲"; // up triangle
             }
-            catch { }
+
+            if (converter < 0)
+            {
+                return "▼"; // down triangle
+            }
+
+            return string.Empty;
         }
+
         return string.Empty;
     }
 

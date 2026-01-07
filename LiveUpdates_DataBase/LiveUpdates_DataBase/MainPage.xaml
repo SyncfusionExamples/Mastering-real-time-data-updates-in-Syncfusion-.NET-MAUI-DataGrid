@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:syncfusion="clr-namespace:Syncfusion.Maui.DataGrid;assembly=Syncfusion.Maui.DataGrid"
              xmlns:local="clr-namespace:LiveUpdates_DataBase"
+             xmlns:vm="clr-namespace:LiveUpdates_DataBase.ViewModels"
              x:Class="LiveUpdates_DataBase.MainPage">
 
     <ContentPage.Resources>
@@ -15,7 +16,7 @@
     </ContentPage.Resources>
 
     <ContentPage.BindingContext>
-        <local:StockViewModel />
+        <vm:StockViewModel />
     </ContentPage.BindingContext>
 
     <Grid RowDefinitions="*" Padding="12">

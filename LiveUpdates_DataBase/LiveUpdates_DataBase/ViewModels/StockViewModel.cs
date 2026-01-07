@@ -4,8 +4,10 @@ using System.Globalization;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Syncfusion.Maui.DataGrid;
+using LiveUpdates_DataBase.Services;
 
-namespace LiveUpdates_DataBase;
+namespace LiveUpdates_DataBase.ViewModels;
 
 /// <summary>
 /// Represents a view model for managing and displaying real-time stock data, including headers and rows for tabular
@@ -14,15 +16,9 @@ namespace LiveUpdates_DataBase;
 public class StockViewModel
 {
     #region Fields
-    private const string DbBase = "https://datagridlivedataupdates-default-rtdb.firebaseio.com";
-    private const string PathStocks = "/stocks.json";
-    private const string AuthToken = "";
-    private string StocksUrl => string.IsNullOrWhiteSpace(AuthToken)
-        ? $"{DbBase}{PathStocks}"
-        : $"{DbBase}{PathStocks}?auth={AuthToken}";
     public ObservableCollection<string> Headers { get; } = new();
     public ObservableCollection<ExpandoObject> Rows { get; } = new();
-    private readonly HttpClient _http = new();
+    private readonly StocksService _service = new();
     private CancellationTokenSource? _streamCts;
     private CancellationTokenSource? _pollCts;
     private CancellationTokenSource? _demoCts;
@@ -32,6 +28,377 @@ public class StockViewModel
     public TimeSpan RemoteSimulationPeriod { get; set; } = TimeSpan.FromSeconds(0.75);
     private CancellationTokenSource? _remoteSimCts;
     #endregion
+
+    /// <summary>
+    /// Builds and configures the columns of the specified SfDataGrid based on the current headers and rows
+    /// </summary>
+    /// <param name="grid"></param>
+    public void BuildGridColumns(SfDataGrid grid)
+    {
+        var mappingNames = BuildMappingNames(this);
+        var changeKey = DetermineChangeKey(mappingNames);
+        var orderedKeys = BuildOrderedKeys(mappingNames);
+        grid.Columns.Clear();
+
+        foreach (var mapping in orderedKeys)
+        {
+            var mappedHeader = MapHeader(mapping);
+            var indexerPath = $"[{mapping}]";
+            var key = Canon(mapping);
+
+            if (ColumnFactories.TryGetValue(key, out var factory))
+            {
+                grid.Columns.Add(factory(mapping, mappedHeader, indexerPath, changeKey));
+            }
+            else
+            {
+                grid.Columns.Add(CreateDefaultColumn(mapping, mappedHeader, indexerPath));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Builds a list of unique mapping names from the headers and rows of the specified StockViewModel,
+    /// </summary>
+    /// <param name="vm"></param>
+    /// <returns></returns>
+    private static List<string> BuildMappingNames(StockViewModel vm)
+    {
+        var mappingNames = new List<string>();
+
+        if (vm.Headers.Count > 0)
+            mappingNames.AddRange(vm.Headers);
+
+        for (int r = 0; r < vm.Rows.Count; r++)
+        {
+            var dict = (IDictionary<string, object?>)vm.Rows[r];
+            foreach (var k in dict.Keys)
+                if (!mappingNames.Contains(k)) mappingNames.Add(k);
+        }
+
+        if (mappingNames.Count == 0 && vm.Rows.Count > 0)
+        {
+            var dict = (IDictionary<string, object?>)vm.Rows[0];
+            mappingNames.AddRange(dict.Keys);
+        }
+
+        return mappingNames
+            .Where(k => ((k ?? string.Empty).Replace(" ", string.Empty).ToLowerInvariant() != "date"))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Determines the appropriate change key based on the provided list of mapping names.
+    /// </summary>
+    private static string? DetermineChangeKey(List<string> mappingNames)
+    {
+        return mappingNames.Any(x => Canon(x) == "stockchange") ? "stockChange" :
+               mappingNames.Any(x => Canon(x) == "change") ? "change" : null;
+    }
+
+    /// <summary>
+    /// Builds an ordered list of mapping names prioritizing common stock attributes.
+    /// </summary>
+    /// <param name="mappingNames"></param>
+    /// <returns></returns>
+    private static List<string> BuildOrderedKeys(List<string> mappingNames)
+    {
+        var ordered = new List<string>();
+
+        void AddIfNotNull(string? k)
+        {
+            if (!string.IsNullOrEmpty(k) && !ordered.Contains(k)) ordered.Add(k);
+        }
+
+        AddIfNotNull(FindKey(mappingNames, "id", "Id"));
+        AddIfNotNull(FindKey(mappingNames, "symbol", "Symbol"));
+        AddIfNotNull(FindKey(mappingNames, "lastTrade", "lasttrade"));
+        AddIfNotNull(FindKey(mappingNames, "open"));
+        AddIfNotNull(FindKey(mappingNames, "previousClose", "previousclose", "previous"));
+        AddIfNotNull(FindKey(mappingNames, "stockChange", "stockchange", "change"));
+
+        foreach (var k in mappingNames)
+        {
+            if (!ordered.Contains(k))
+            {
+                ordered.Add(k);
+            }
+        }
+
+        return ordered;
+    }
+
+    private static string Canon(string s) => (s ?? string.Empty).Replace(" ", string.Empty).ToLowerInvariant();
+
+    /// <summary>
+    /// Finds the first matching key from the provided candidates within the given collection of keys.
+    /// </summary>
+    /// <param name="keys"></param>
+    /// <param name="candidates"></param>
+    /// <returns></returns>
+    private static string? FindKey(IEnumerable<string> keys, params string[] candidates)
+    {
+        var set = keys.ToDictionary(Canon, k => k);
+        foreach (var c in candidates)
+        {
+            var cc = Canon(c);
+            if (set.TryGetValue(cc, out var found))
+            {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Maps common stock attribute keys to user-friendly header names.
+    /// </summary>
+    /// <param name="keyOrHeader"></param>
+    /// <returns></returns>
+    private static string MapHeader(string originalKeyOrHeader)
+    {
+        var trimmedHeader = (originalKeyOrHeader ?? string.Empty).Trim();
+        var normalizedHeader = Canon(trimmedHeader);
+
+        return normalizedHeader switch
+        {
+            "id" => "ID",
+            "symbol" => "Symbol",
+            "lasttrade" => "Last Trade",
+            "open" => "Open",
+            "previousclose" => "Previous",
+            "stockchange" or "change" => "Stock",
+            _ => trimmedHeader
+        };
+    }
+
+    /// <summary>
+    /// Provides a mapping of column type names to factory functions that create corresponding DataGridColumn instances.
+    /// </summary>
+    private static readonly Dictionary<string, Func<string, string, string, string?, DataGridColumn>> ColumnFactories = new()
+    {
+        ["stockchange"] = (mappingName, headerText, indexerPath, changeKey) => CreateStockChangeColumn(mappingName, headerText, indexerPath),
+        ["change"] = (mappingName, headerText, indexerPath, changeKey) => CreateStockChangeColumn(mappingName, headerText, indexerPath),
+        ["lasttrade"] = (mappingName, headerText, indexerPath, changeKey) => CreateLastTradeColumn(mappingName, headerText, indexerPath, changeKey),
+        ["previousclose"] = (mappingName, headerText, indexerPath, changeKey) => CreatePreviousColumn(mappingName, headerText, indexerPath),
+        ["previous"] = (mappingName, headerText, indexerPath, changeKey) => CreatePreviousColumn(mappingName, headerText, indexerPath),
+        ["open"] = (mappingName, headerText, indexerPath, changeKey) => CreateOpenColumn(mappingName, headerText, indexerPath),
+        ["id"] = (mappingName, headerText, indexerPath, changeKey) => CreateIdColumn(mappingName, headerText, indexerPath),
+        ["symbol"] = (mappingName, headerText, indexerPath, changeKey) => CreateSymbolColumn(mappingName, headerText, indexerPath),
+    };
+
+    private static DataGridTemplateColumn CreateStockChangeColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            HeaderTemplate = new DataTemplate(() =>
+                new Label
+                {
+                    Text = header,
+                    FontAttributes = FontAttributes.Bold,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    Padding = new Thickness(8, 0)
+                }),
+            CellTemplate = new DataTemplate(() =>
+            {
+                var h = new HorizontalStackLayout
+                {
+                    Spacing = 6,
+                    VerticalOptions = LayoutOptions.Center,
+                    HorizontalOptions = LayoutOptions.Center,
+                    Padding = new Thickness(8, 0)
+                };
+
+                var arrow = new Label
+                {
+                    FontSize = 14,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                arrow.SetBinding(Label.TextProperty,
+                    new Binding(indexerPath) { Converter = new SignToArrowConverter() });
+                arrow.SetBinding(Label.TextColorProperty,
+                    new Binding(indexerPath)
+                    {
+                        Converter = new SignToColorConverter(),
+                        FallbackValue = Colors.Gray,
+                        TargetNullValue = Colors.Gray
+                    });
+
+                var valueLbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                valueLbl.SetBinding(Label.TextProperty,
+                    new Binding(indexerPath) { StringFormat = "{0:0.00}" });
+                valueLbl.SetBinding(Label.TextColorProperty,
+                    new Binding(indexerPath)
+                    {
+                        Converter = new SignToColorConverter(),
+                        FallbackValue = Colors.Gray,
+                        TargetNullValue = Colors.Gray
+                    });
+
+                h.Add(arrow);
+                h.Add(valueLbl);
+                return h;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreateLastTradeColumn(string mapping, string header, string indexerPath, string? changeKey)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            HeaderTemplate = new DataTemplate(() =>
+                new Label
+                {
+                    Text = header,
+                    FontAttributes = FontAttributes.Bold,
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    Padding = new Thickness(8, 0)
+                }),
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center,
+                    Padding = new Thickness(8, 0)
+                };
+
+                lbl.SetBinding(Label.TextProperty,
+                    new Binding(indexerPath) { StringFormat = "{0:0.00}" });
+
+                if (!string.IsNullOrEmpty(changeKey))
+                {
+                    var changeIndexer = $"[{changeKey}]";
+                    lbl.SetBinding(Label.TextColorProperty,
+                        new Binding(changeIndexer)
+                        {
+                            Converter = new SignToColorConverter(),
+                            FallbackValue = Colors.Gray,
+                            TargetNullValue = Colors.Gray
+                        });
+                }
+                else
+                {
+                    lbl.TextColor = Colors.Gray;
+                }
+
+                return lbl;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreatePreviousColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderTemplate = new DataTemplate(() => new Label
+            {
+                Text = header,
+                FontAttributes = FontAttributes.Bold,
+                LineBreakMode = LineBreakMode.NoWrap,
+                HorizontalTextAlignment = TextAlignment.Center,
+                VerticalTextAlignment = TextAlignment.Center
+            }),
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                return lbl;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreateOpenColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                return lbl;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreateIdColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0}" });
+                return lbl;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreateSymbolColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Center
+                };
+                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                return lbl;
+            })
+        };
+    }
+
+    private static DataGridTemplateColumn CreateDefaultColumn(string mapping, string header, string indexerPath)
+    {
+        return new DataGridTemplateColumn
+        {
+            MappingName = mapping,
+            HeaderText = header,
+            CellTemplate = new DataTemplate(() =>
+            {
+                var lbl = new Label
+                {
+                    VerticalTextAlignment = TextAlignment.Center,
+                    HorizontalTextAlignment = TextAlignment.Start
+                };
+                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                return lbl;
+            })
+        };
+    }
 
     /// <summary>
     /// Recalculates the next sequential identifier based on the current set of rows.
@@ -47,7 +414,12 @@ public class StockViewModel
                 if (dict.TryGetValue("id", out var idObj) && idObj != null)
                 {
                     if (long.TryParse(idObj.ToString(), out var idVal))
-                        if (idVal > maxId) maxId = idVal;
+                    {
+                        if (idVal > maxId)
+                        {
+                            maxId = idVal;
+                        }
+                    }
                 }
             }
             _nextSequentialId = maxId + 1;
@@ -58,23 +430,12 @@ public class StockViewModel
         }
     }
 
-    /// <summary>
-    /// Asynchronously sends a simulated stock record to the configured stocks endpoint using an HTTP POST request.
-    /// </summary>
     private async Task PushSimulatedRecordAsync(CancellationToken ct)
     {
         var rec = GenerateSimulatedStock();
-        using var content = new StringContent(
-            JsonConvert.SerializeObject(rec),
-            Encoding.UTF8,
-            "application/json");
-
-        using var resp = await _http.PostAsync(StocksUrl, content, ct).ConfigureAwait(false);
+        await _service.PostStockAsync(rec, ct).ConfigureAwait(false);
     }
 
-    /// <summary>
-    /// Periodically pushes simulated records at the specified interval until cancellation is requested.
-    /// </summary>
     private async Task RemoteSimLoopAsync(TimeSpan period, CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -85,9 +446,6 @@ public class StockViewModel
         }
     }
 
-    /// <summary>
-    /// Initializes the service and starts all background processing loops asynchronously.
-    /// </summary>
     public async Task InitializeAsync()
     {
         if (_streamCts != null)
@@ -134,34 +492,20 @@ public class StockViewModel
         }
     }
 
-    /// <summary>
-    /// Determines whether the specified string appears to be a JSON object or array based on its leading character.
-    /// </summary>
-    private static bool LooksLikeJson(string? s)
+    private static bool LooksLikeJson(string? stringValue)
     {
-        if (string.IsNullOrWhiteSpace(s))
+        if (string.IsNullOrWhiteSpace(stringValue))
         {
             return false;
         }
 
-        var t = s.TrimStart();
-        return t.StartsWith('{') || t.StartsWith('[');
+        var trim = stringValue.TrimStart();
+        return trim.StartsWith('{') || trim.StartsWith('[');
     }
 
-    /// <summary>
-    /// Asynchronously loads the latest stock snapshot data and updates the current headers and rows.
-    /// </summary>
-    private async Task LoadSnapshotAsync(CancellationToken ct)
+    private async Task LoadSnapshotAsync(CancellationToken cancelToken)
     {
-        var res = await _http.GetAsync(StocksUrl, ct);
-        if (!res.IsSuccessStatusCode)
-        {
-            SetHeaders(Array.Empty<string>());
-            SetRows(new List<ExpandoObject>());
-            return;
-        }
-
-        var json = await res.Content.ReadAsStringAsync(ct);
+        var json = await _service.GetStocksJsonAsync(cancelToken).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(json) || json == "null" || !LooksLikeJson(json))
         {
             SetHeaders(Array.Empty<string>());
@@ -337,8 +681,8 @@ public class StockViewModel
         var dict = (IDictionary<string, object?>)expando;
         if (token is JObject o)
         {
-            foreach (var p in o.Properties())
-                dict[p.Name] = ToNet(p.Value);
+            foreach (var prop in o.Properties())
+                dict[prop.Name] = ToNet(prop.Value);
         }
 
         return expando;
@@ -347,17 +691,17 @@ public class StockViewModel
     /// <summary>
     /// Converts a JToken to its corresponding .NET object representation.
     /// </summary>
-    /// <param name="t">The JToken to convert. Must not be null.</param>
-    private static object? ToNet(JToken t) => t.Type switch
+    /// <param name="token">The JToken to convert. Must not be null.</param>
+    private static object? ToNet(JToken token) => token.Type switch
     {
         JTokenType.Null => null,
-        JTokenType.Integer => (long)t,
-        JTokenType.Float => (double)t,
-        JTokenType.Boolean => (bool)t,
-        JTokenType.String => (string)t!,
-        JTokenType.Object => ((JObject)t).Properties().ToDictionary(p => p.Name, p => (object?)ToNet(p.Value)),
-        JTokenType.Array => ((JArray)t).Select(ToNet).ToList(),
-        _ => t.ToString()
+        JTokenType.Integer => (long)token,
+        JTokenType.Float => (double)token,
+        JTokenType.Boolean => (bool)token,
+        JTokenType.String => (string)token!,
+        JTokenType.Object => ((JObject)token).Properties().ToDictionary(prop => prop.Name, p => (object?)ToNet(p.Value)),
+        JTokenType.Array => ((JArray)token).Select(ToNet).ToList(),
+        _ => token.ToString()
     };
 
     private void SetHeaders(IEnumerable<string> headers)
@@ -365,7 +709,7 @@ public class StockViewModel
         MainThread.BeginInvokeOnMainThread(() =>
         {
             Headers.Clear();
-            foreach (var h in headers) Headers.Add(h);
+            foreach (var header in headers) Headers.Add(header);
         });
     }
 
@@ -381,7 +725,11 @@ public class StockViewModel
         {
             if (Rows.Count == 0)
             {
-                foreach (var r in rows) Rows.Add(r);
+                foreach (var row in rows)
+                {
+                    Rows.Add(row);
+                }
+
                 return;
             }
 
@@ -390,7 +738,10 @@ public class StockViewModel
                 foreach (var k in keys)
                 {
                     var lower = k.ToLowerInvariant();
-                    if (lower == "id" || lower == "symbol") return k;
+                    if (lower == "id" || lower == "symbol")
+                    {
+                        return k;
+                    }
                 }
                 return keys.First();
             }
@@ -403,6 +754,7 @@ public class StockViewModel
                 Rows.Clear();
                 return;
             }
+
             var keyName = KeyName(firstKeys);
             var indexByKey = new Dictionary<string, int>();
             for (int i = 0; i < Rows.Count; i++)
@@ -411,15 +763,18 @@ public class StockViewModel
                 if (dict.ContainsKey(keyName))
                 {
                     var k = dict[keyName]?.ToString() ?? string.Empty;
-                    if (!indexByKey.ContainsKey(k)) indexByKey[k] = i;
+                    if (!indexByKey.ContainsKey(k))
+                    {
+                        indexByKey[k] = i;
+                    }
                 }
             }
 
             var seenKeys = new HashSet<string>();
             for (int i = 0; i < rows.Count; i++)
             {
-                var nd = (IDictionary<string, object?>)rows[i];
-                var key = nd.ContainsKey(keyName) ? nd[keyName]?.ToString() ?? string.Empty : string.Empty;
+                var value = (IDictionary<string, object?>)rows[i];
+                var key = value.ContainsKey(keyName) ? value[keyName]?.ToString() ?? string.Empty : string.Empty;
                 seenKeys.Add(key);
 
                 if (indexByKey.TryGetValue(key, out var existingIndex))
@@ -446,35 +801,38 @@ public class StockViewModel
     /// <summary>
     /// Continuously streams and processes server-sent events from the stocks endpoint until cancellation is requested.
     /// </summary>
-    /// <param name="ct">A cancellation token that can be used to request cancellation of the streaming operation.</param>
-    private async Task StreamLoopAsync(CancellationToken ct)
+    /// <param name="cancelToken">A cancellation token that can be used to request cancellation of the streaming operation.</param>
+    private async Task StreamLoopAsync(CancellationToken cancelToken)
     {
-        while (!ct.IsCancellationRequested)
+        while (!cancelToken.IsCancellationRequested)
         {
             try
             {
-                using var req = new HttpRequestMessage(HttpMethod.Get, StocksUrl);
-                req.Headers.Add("Accept", "text/event-stream");
-                using var res = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
-                if (!res.IsSuccessStatusCode)
+                using var stream = await _service.TryOpenSseAsync(cancelToken).ConfigureAwait(false);
+                if (stream == null)
                 {
-                    await Task.Delay(2000, ct);
+                    await Task.Delay(2000, cancelToken).ConfigureAwait(false);
                     continue;
                 }
-                using var stream = await res.Content.ReadAsStreamAsync(ct);
                 using var reader = new StreamReader(stream);
 
                 string? eventName = null;
                 var dataBuilder = new StringBuilder();
-                while (!ct.IsCancellationRequested)
+                while (!cancelToken.IsCancellationRequested)
                 {
-                    var line = await reader.ReadLineAsync(ct);
+                    var line = await reader.ReadLineAsync(cancelToken).ConfigureAwait(false);
                     if (line == null)
                     {
                         break;
                     }
-                    if (line.StartsWith("event:")) eventName = line[6..].Trim();
-                    else if (line.StartsWith("data:")) dataBuilder.AppendLine(line[5..].Trim());
+                    if (line.StartsWith("event:"))
+                    {
+                        eventName = line[6..].Trim();
+                    }
+                    else if (line.StartsWith("data:"))
+                    {
+                        dataBuilder.AppendLine(line[5..].Trim());
+                    }
                     else if (string.IsNullOrWhiteSpace(line))
                     {
                         var data = dataBuilder.ToString();
@@ -487,7 +845,7 @@ public class StockViewModel
             }
             catch
             {
-                await Task.Delay(2000, ct);
+                await Task.Delay(2000, cancelToken).ConfigureAwait(false);
             }
         }
     }
@@ -499,15 +857,15 @@ public class StockViewModel
     /// <param name="dataJson"></param>
     private void ApplyFirebaseEvent(string eventName, string dataJson)
     {
-        var evt = JsonConvert.DeserializeObject<JObject>(dataJson) ?? new JObject();
-        var data = evt["data"];
-        var path = (string?)evt["path"] ?? "/";
+        var event_name = JsonConvert.DeserializeObject<JObject>(dataJson) ?? new JObject();
+        var data = event_name["data"];
+        var path = (string?)event_name["path"] ?? "/";
         switch (eventName)
         {
             case "put":
                 if (!string.Equals(path, "/", StringComparison.Ordinal))
                 {
-                    _ = LoadSnapshotAsync();
+                    LoadSnapshotAsync();
                     return;
                 }
 
@@ -522,7 +880,7 @@ public class StockViewModel
                 }
                 break;
             case "patch":
-                _ = LoadSnapshotAsync();
+                LoadSnapshotAsync();
                 break;
         }
     }
