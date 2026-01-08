@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Syncfusion.Maui.Core.Hosting;
+using Firebase.Database;
 
 namespace LiveUpdates_DataBase
 {
@@ -16,7 +17,8 @@ namespace LiveUpdates_DataBase
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-            // Initialize Syncfusion on all platforms/configurations
+			builder.Services.AddSingleton<StocksService>();      // Service for Firebase operations 
+            builder.Services.AddSingleton<StockViewModel>();     // ViewModel for binding to UI 
             builder.ConfigureSyncfusionCore();
 
 #if DEBUG
