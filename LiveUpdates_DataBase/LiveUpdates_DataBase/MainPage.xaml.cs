@@ -1,7 +1,8 @@
+
 using Syncfusion.Maui.DataGrid;
 using System;
 using System.Collections.Specialized;
-using LiveUpdates_DataBase.ViewModels;
+using System.Dynamic;
 
 namespace LiveUpdates_DataBase
 {
@@ -26,10 +27,6 @@ namespace LiveUpdates_DataBase
             if (BindingContext is StockViewModel viewModel)
             {
                 viewModel.Headers.CollectionChanged += OnHeadersChanged;
-                viewModel.Rows.CollectionChanged += (view, stock) =>
-                {
-                    grid?.View?.Refresh();
-                };
             }
         }
 

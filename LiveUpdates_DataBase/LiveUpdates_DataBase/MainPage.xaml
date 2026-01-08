@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:syncfusion="clr-namespace:Syncfusion.Maui.DataGrid;assembly=Syncfusion.Maui.DataGrid"
              xmlns:local="clr-namespace:LiveUpdates_DataBase"
-             xmlns:vm="clr-namespace:LiveUpdates_DataBase.ViewModels"
              x:Class="LiveUpdates_DataBase.MainPage">
 
     <ContentPage.Resources>
@@ -16,13 +15,13 @@
     </ContentPage.Resources>
 
     <ContentPage.BindingContext>
-        <vm:StockViewModel />
+        <local:StockViewModel />
     </ContentPage.BindingContext>
 
     <Grid RowDefinitions="*" Padding="12">
         <syncfusion:SfDataGrid
                          x:Name="grid"
-                         ItemsSource="{Binding Rows}"                       
-                         ColumnWidthMode="Auto"/>
+                         ItemsSource="{Binding Rows}"                      
+                         ColumnWidthMode="Auto" />
     </Grid>
 </ContentPage>

@@ -5,17 +5,17 @@ using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Syncfusion.Maui.DataGrid;
-using LiveUpdates_DataBase.Services;
 
-namespace LiveUpdates_DataBase.ViewModels;
+namespace LiveUpdates_DataBase;
 
 /// <summary>
-/// Represents a view model for managing and displaying real-time stock data, including headers and rows for tabular
+/// Represents a view model for managing and displaying real-time stock data, including header and rows for tabular
 /// presentation, and supporting live updates, simulation, and remote data synchronization.
 /// </summary>
 public class StockViewModel
 {
     #region Fields
+
     public ObservableCollection<string> Headers { get; } = new();
     public ObservableCollection<ExpandoObject> Rows { get; } = new();
     private readonly StocksService _service = new();
@@ -27,10 +27,11 @@ public class StockViewModel
     public bool EnableRemoteSimulation { get; set; } = true;
     public TimeSpan RemoteSimulationPeriod { get; set; } = TimeSpan.FromSeconds(0.75);
     private CancellationTokenSource? _remoteSimCts;
+
     #endregion
 
     /// <summary>
-    /// Builds and configures the columns of the specified SfDataGrid based on the current headers and rows
+    /// Builds and configures the columns of the specified SfDataGrid based on the current header and rows
     /// </summary>
     /// <param name="grid"></param>
     public void BuildGridColumns(SfDataGrid grid)
@@ -58,7 +59,7 @@ public class StockViewModel
     }
 
     /// <summary>
-    /// Builds a list of unique mapping names from the headers and rows of the specified StockViewModel,
+    /// Builds a list of unique mapping names from the header and rows of the specified StockViewModel,
     /// </summary>
     /// <param name="vm"></param>
     /// <returns></returns>
@@ -67,13 +68,20 @@ public class StockViewModel
         var mappingNames = new List<string>();
 
         if (vm.Headers.Count > 0)
+        {
             mappingNames.AddRange(vm.Headers);
+        }
 
         for (int r = 0; r < vm.Rows.Count; r++)
         {
             var dict = (IDictionary<string, object?>)vm.Rows[r];
             foreach (var k in dict.Keys)
-                if (!mappingNames.Contains(k)) mappingNames.Add(k);
+            {
+                if (!mappingNames.Contains(k))
+                {
+                    mappingNames.Add(k);
+                }
+            }
         }
 
         if (mappingNames.Count == 0 && vm.Rows.Count > 0)
@@ -104,10 +112,12 @@ public class StockViewModel
     private static List<string> BuildOrderedKeys(List<string> mappingNames)
     {
         var ordered = new List<string>();
-
         void AddIfNotNull(string? k)
         {
-            if (!string.IsNullOrEmpty(k) && !ordered.Contains(k)) ordered.Add(k);
+            if (!string.IsNullOrEmpty(k) && !ordered.Contains(k))
+            {
+                ordered.Add(k);
+            }
         }
 
         AddIfNotNull(FindKey(mappingNames, "id", "Id"));
@@ -153,13 +163,10 @@ public class StockViewModel
     /// <summary>
     /// Maps common stock attribute keys to user-friendly header names.
     /// </summary>
-    /// <param name="keyOrHeader"></param>
-    /// <returns></returns>
     private static string MapHeader(string originalKeyOrHeader)
     {
         var trimmedHeader = (originalKeyOrHeader ?? string.Empty).Trim();
         var normalizedHeader = Canon(trimmedHeader);
-
         return normalizedHeader switch
         {
             "id" => "ID",
@@ -204,7 +211,7 @@ public class StockViewModel
                 }),
             CellTemplate = new DataTemplate(() =>
             {
-                var h = new HorizontalStackLayout
+                var horizontalLayout = new HorizontalStackLayout
                 {
                     Spacing = 6,
                     VerticalOptions = LayoutOptions.Center,
@@ -243,9 +250,9 @@ public class StockViewModel
                         TargetNullValue = Colors.Gray
                     });
 
-                h.Add(arrow);
-                h.Add(valueLbl);
-                return h;
+                horizontalLayout.Add(arrow);
+                horizontalLayout.Add(valueLbl);
+                return horizontalLayout;
             })
         };
     }
@@ -267,20 +274,20 @@ public class StockViewModel
                 }),
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Center,
                     Padding = new Thickness(8, 0)
                 };
 
-                lbl.SetBinding(Label.TextProperty,
+                label.SetBinding(Label.TextProperty,
                     new Binding(indexerPath) { StringFormat = "{0:0.00}" });
 
                 if (!string.IsNullOrEmpty(changeKey))
                 {
                     var changeIndexer = $"[{changeKey}]";
-                    lbl.SetBinding(Label.TextColorProperty,
+                    label.SetBinding(Label.TextColorProperty,
                         new Binding(changeIndexer)
                         {
                             Converter = new SignToColorConverter(),
@@ -290,10 +297,10 @@ public class StockViewModel
                 }
                 else
                 {
-                    lbl.TextColor = Colors.Gray;
+                    label.TextColor = Colors.Gray;
                 }
 
-                return lbl;
+                return label;
             })
         };
     }
@@ -313,13 +320,13 @@ public class StockViewModel
             }),
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Center
                 };
-                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
-                return lbl;
+                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                return label;
             })
         };
     }
@@ -332,13 +339,13 @@ public class StockViewModel
             HeaderText = header,
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Center
                 };
-                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
-                return lbl;
+                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                return label;
             })
         };
     }
@@ -351,13 +358,13 @@ public class StockViewModel
             HeaderText = header,
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Center
                 };
-                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0}" });
-                return lbl;
+                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0}" });
+                return label;
             })
         };
     }
@@ -370,13 +377,13 @@ public class StockViewModel
             HeaderText = header,
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Center
                 };
-                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath));
-                return lbl;
+                label.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                return label;
             })
         };
     }
@@ -389,13 +396,13 @@ public class StockViewModel
             HeaderText = header,
             CellTemplate = new DataTemplate(() =>
             {
-                var lbl = new Label
+                var label = new Label
                 {
                     VerticalTextAlignment = TextAlignment.Center,
                     HorizontalTextAlignment = TextAlignment.Start
                 };
-                lbl.SetBinding(Label.TextProperty, new Binding(indexerPath));
-                return lbl;
+                label.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                return label;
             })
         };
     }
@@ -570,11 +577,11 @@ public class StockViewModel
     /// Periodically updates stock data rows with simulated changes until cancellation is requested.
     /// </summary>
     /// <param name="period">The interval to wait between each update cycle.</param>
-    /// <param name="ct">A cancellation token that can be used to request cancellation of the update loop.</param>
-    private async Task DemoChangeLoopAsync(TimeSpan period, CancellationToken ct)
+    /// <param name="cancelToken">A cancellation token that can be used to request cancellation of the update loop.</param>
+    private async Task DemoChangeLoopAsync(TimeSpan period, CancellationToken cancelToken)
     {
         var random = new Random();
-        while (!ct.IsCancellationRequested)
+        while (!cancelToken.IsCancellationRequested)
         {
             if (Rows.Count > 0)
             {
@@ -612,26 +619,26 @@ public class StockViewModel
                 });
             }
 
-            await Task.Delay(period, ct);
+            await Task.Delay(period, cancelToken);
         }
     }
 
     /// <summary>
-    /// Processes the specified JSON token and updates the headers and rows based on its structure.
+    /// Processes the specified JSON token and updates the header and rows based on its structure.
     /// </summary>
-    /// <param name="token">The JSON token to process. Must represent an object or array containing tabular data, such as headers and rows,
+    /// <param name="token">The JSON token to process. Must represent an object or array containing tabular data, such as header and rows,
     /// or a collection of stock objects.</param>
     private void ProcessToken(JToken token)
     {
         if (token is JObject obj && obj.Property("headers") != null && obj.Property("rows") != null)
         {
-            var hdrs = obj["headers"]!
+            var header = obj["headers"]!
                 .Values<string?>()
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Cast<string>()
                 .ToArray();
             var rows = obj["rows"]!.Select(ToExpando).ToList();
-            SetHeaders(hdrs);
+            SetHeaders(header);
             SetRows(rows);
             return;
         }

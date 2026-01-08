@@ -1,7 +1,6 @@
 using System.Globalization;
 
 namespace LiveUpdates_DataBase;
-
 /// <summary>
 /// Sign to Color converter
 /// </summary>
