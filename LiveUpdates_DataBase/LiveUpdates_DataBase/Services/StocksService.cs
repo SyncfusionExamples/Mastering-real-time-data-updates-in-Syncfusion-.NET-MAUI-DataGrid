@@ -73,4 +73,3 @@ public class StocksService
         return await response.Content.ReadAsStreamAsync(cancelToken).ConfigureAwait(false);
     }
 }
-

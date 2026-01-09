@@ -34,29 +34,24 @@ public class StockViewModel
     /// Builds and configures the columns of the specified SfDataGrid based on the current header and rows
     /// </summary>
     /// <param name="grid"></param>
-    public void BuildGridColumns(SfDataGrid grid)
+
+    public void CollectColumnKeys(SfDataGrid grid)
     {
         var mappingNames = BuildMappingNames(this);
-        var changeKey = DetermineChangeKey(mappingNames);
-        var orderedKeys = BuildOrderedKeys(mappingNames);
+        var changeKey = GetChangeKey(mappingNames);
+        var orderedKeys = OrderColumnKeys(mappingNames);
+
         grid.Columns.Clear();
 
         foreach (var mapping in orderedKeys)
         {
-            var mappedHeader = MapHeader(mapping);
+            var mappedHeader = GetHeaderText(mapping);
             var indexerPath = $"[{mapping}]";
-            var key = Canon(mapping);
-
-            if (ColumnFactories.TryGetValue(key, out var factory))
-            {
-                grid.Columns.Add(factory(mapping, mappedHeader, indexerPath, changeKey));
-            }
-            else
-            {
-                grid.Columns.Add(CreateDefaultColumn(mapping, mappedHeader, indexerPath));
-            }
+            grid.Columns.Add(CreateColumn(mapping, mappedHeader, indexerPath, changeKey));
         }
     }
+
+
 
     /// <summary>
     /// Builds a list of unique mapping names from the header and rows of the specified StockViewModel,
@@ -98,10 +93,10 @@ public class StockViewModel
     /// <summary>
     /// Determines the appropriate change key based on the provided list of mapping names.
     /// </summary>
-    private static string? DetermineChangeKey(List<string> mappingNames)
+    private static string? GetChangeKey(List<string> mappingNames)
     {
-        return mappingNames.Any(x => Canon(x) == "stockchange") ? "stockChange" :
-               mappingNames.Any(x => Canon(x) == "change") ? "change" : null;
+        return mappingNames.Any(x => Canonicalize(x) == "stockchange") ? "stockChange" :
+               mappingNames.Any(x => Canonicalize(x) == "change") ? "change" : null;
     }
 
     /// <summary>
@@ -109,24 +104,28 @@ public class StockViewModel
     /// </summary>
     /// <param name="mappingNames"></param>
     /// <returns></returns>
-    private static List<string> BuildOrderedKeys(List<string> mappingNames)
+
+    private static List<string> OrderColumnKeys(List<string> mappingNames)
     {
-        var ordered = new List<string>();
-        void AddIfNotNull(string? k)
+        var priorityCanonical = new[]
         {
-            if (!string.IsNullOrEmpty(k) && !ordered.Contains(k))
+        "id", "symbol", "lasttrade", "open", "previousclose", "stockchange"
+        };
+
+        var foundByCanonical = mappingNames
+            .GroupBy(Canonicalize)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var ordered = new List<string>();
+        foreach (var pc in priorityCanonical)
+        {
+            if (foundByCanonical.TryGetValue(pc, out var actual))
             {
-                ordered.Add(k);
+                ordered.Add(actual);
             }
         }
 
-        AddIfNotNull(FindKey(mappingNames, "id", "Id"));
-        AddIfNotNull(FindKey(mappingNames, "symbol", "Symbol"));
-        AddIfNotNull(FindKey(mappingNames, "lastTrade", "lasttrade"));
-        AddIfNotNull(FindKey(mappingNames, "open"));
-        AddIfNotNull(FindKey(mappingNames, "previousClose", "previousclose", "previous"));
-        AddIfNotNull(FindKey(mappingNames, "stockChange", "stockchange", "change"));
-
+        // Append remaining keys in original order, without duplicates
         foreach (var k in mappingNames)
         {
             if (!ordered.Contains(k))
@@ -138,35 +137,15 @@ public class StockViewModel
         return ordered;
     }
 
-    private static string Canon(string s) => (s ?? string.Empty).Replace(" ", string.Empty).ToLowerInvariant();
-
-    /// <summary>
-    /// Finds the first matching key from the provided candidates within the given collection of keys.
-    /// </summary>
-    /// <param name="keys"></param>
-    /// <param name="candidates"></param>
-    /// <returns></returns>
-    private static string? FindKey(IEnumerable<string> keys, params string[] candidates)
-    {
-        var set = keys.ToDictionary(Canon, k => k);
-        foreach (var c in candidates)
-        {
-            var cc = Canon(c);
-            if (set.TryGetValue(cc, out var found))
-            {
-                return found;
-            }
-        }
-        return null;
-    }
+    private static string Canonicalize(string s) => (s ?? string.Empty).Replace(" ", string.Empty).ToLowerInvariant();
 
     /// <summary>
     /// Maps common stock attribute keys to user-friendly header names.
     /// </summary>
-    private static string MapHeader(string originalKeyOrHeader)
+    private static string GetHeaderText(string originalKeyOrHeader)
     {
         var trimmedHeader = (originalKeyOrHeader ?? string.Empty).Trim();
-        var normalizedHeader = Canon(trimmedHeader);
+        var normalizedHeader = Canonicalize(trimmedHeader);
         return normalizedHeader switch
         {
             "id" => "ID",
@@ -179,231 +158,191 @@ public class StockViewModel
         };
     }
 
-    /// <summary>
-    /// Provides a mapping of column type names to factory functions that create corresponding DataGridColumn instances.
-    /// </summary>
-    private static readonly Dictionary<string, Func<string, string, string, string?, DataGridColumn>> ColumnFactories = new()
+    private static DataGridColumn CreateColumn(string mapping, string header, string indexerPath, string? changeKey)
     {
-        ["stockchange"] = (mappingName, headerText, indexerPath, changeKey) => CreateStockChangeColumn(mappingName, headerText, indexerPath),
-        ["change"] = (mappingName, headerText, indexerPath, changeKey) => CreateStockChangeColumn(mappingName, headerText, indexerPath),
-        ["lasttrade"] = (mappingName, headerText, indexerPath, changeKey) => CreateLastTradeColumn(mappingName, headerText, indexerPath, changeKey),
-        ["previousclose"] = (mappingName, headerText, indexerPath, changeKey) => CreatePreviousColumn(mappingName, headerText, indexerPath),
-        ["previous"] = (mappingName, headerText, indexerPath, changeKey) => CreatePreviousColumn(mappingName, headerText, indexerPath),
-        ["open"] = (mappingName, headerText, indexerPath, changeKey) => CreateOpenColumn(mappingName, headerText, indexerPath),
-        ["id"] = (mappingName, headerText, indexerPath, changeKey) => CreateIdColumn(mappingName, headerText, indexerPath),
-        ["symbol"] = (mappingName, headerText, indexerPath, changeKey) => CreateSymbolColumn(mappingName, headerText, indexerPath),
-    };
+        string key = Canonicalize(mapping);
 
-    private static DataGridTemplateColumn CreateStockChangeColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderText = header,
-            HeaderTemplate = new DataTemplate(() =>
-                new Label
-                {
-                    Text = header,
-                    FontAttributes = FontAttributes.Bold,
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center,
-                    Padding = new Thickness(8, 0)
-                }),
-            CellTemplate = new DataTemplate(() =>
+        DataTemplate BoldCenteredHeader(string text) => new DataTemplate(() =>
+            new Label
             {
-                var horizontalLayout = new HorizontalStackLayout
-                {
-                    Spacing = 6,
-                    VerticalOptions = LayoutOptions.Center,
-                    HorizontalOptions = LayoutOptions.Center,
-                    Padding = new Thickness(8, 0)
-                };
+                Text = text,
+                FontAttributes = FontAttributes.Bold,
+                VerticalTextAlignment = TextAlignment.Center,
+                HorizontalTextAlignment = TextAlignment.Center,
+                Padding = new Thickness(8, 0),
+                LineBreakMode = LineBreakMode.NoWrap
+            });
 
-                var arrow = new Label
-                {
-                    FontSize = 14,
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                arrow.SetBinding(Label.TextProperty,
-                    new Binding(indexerPath) { Converter = new SignToArrowConverter() });
-                arrow.SetBinding(Label.TextColorProperty,
-                    new Binding(indexerPath)
-                    {
-                        Converter = new SignToColorConverter(),
-                        FallbackValue = Colors.Gray,
-                        TargetNullValue = Colors.Gray
-                    });
-
-                var valueLbl = new Label
-                {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                valueLbl.SetBinding(Label.TextProperty,
-                    new Binding(indexerPath) { StringFormat = "{0:0.00}" });
-                valueLbl.SetBinding(Label.TextColorProperty,
-                    new Binding(indexerPath)
-                    {
-                        Converter = new SignToColorConverter(),
-                        FallbackValue = Colors.Gray,
-                        TargetNullValue = Colors.Gray
-                    });
-
-                horizontalLayout.Add(arrow);
-                horizontalLayout.Add(valueLbl);
-                return horizontalLayout;
-            })
-        };
-    }
-
-    private static DataGridTemplateColumn CreateLastTradeColumn(string mapping, string header, string indexerPath, string? changeKey)
-    {
-        return new DataGridTemplateColumn
+        return key switch
         {
-            MappingName = mapping,
-            HeaderText = header,
-            HeaderTemplate = new DataTemplate(() =>
-                new Label
-                {
-                    Text = header,
-                    FontAttributes = FontAttributes.Bold,
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center,
-                    Padding = new Thickness(8, 0)
-                }),
-            CellTemplate = new DataTemplate(() =>
+            "stockchange" or "change" => new DataGridTemplateColumn
             {
-                var label = new Label
+                MappingName = mapping,
+                HeaderText = header,
+                HeaderTemplate = BoldCenteredHeader(header),
+                CellTemplate = new DataTemplate(() =>
                 {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center,
-                    Padding = new Thickness(8, 0)
-                };
+                    var horizontalLayout = new HorizontalStackLayout
+                    {
+                        Spacing = 6,
+                        VerticalOptions = LayoutOptions.Center,
+                        HorizontalOptions = LayoutOptions.Center,
+                        Padding = new Thickness(8, 0)
+                    };
 
-                label.SetBinding(Label.TextProperty,
-                    new Binding(indexerPath) { StringFormat = "{0:0.00}" });
-
-                if (!string.IsNullOrEmpty(changeKey))
-                {
-                    var changeIndexer = $"[{changeKey}]";
-                    label.SetBinding(Label.TextColorProperty,
-                        new Binding(changeIndexer)
+                    var arrow = new Label
+                    {
+                        FontSize = 14,
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    arrow.SetBinding(Label.TextProperty,
+                        new Binding(indexerPath) { Converter = new SignToArrowConverter() });
+                    arrow.SetBinding(Label.TextColorProperty,
+                        new Binding(indexerPath)
                         {
                             Converter = new SignToColorConverter(),
                             FallbackValue = Colors.Gray,
                             TargetNullValue = Colors.Gray
                         });
-                }
-                else
-                {
-                    label.TextColor = Colors.Gray;
-                }
 
-                return label;
-            })
-        };
-    }
+                    var valueLbl = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    valueLbl.SetBinding(Label.TextProperty,
+                        new Binding(indexerPath) { StringFormat = "{0:0.00}" });
+                    valueLbl.SetBinding(Label.TextColorProperty,
+                        new Binding(indexerPath)
+                        {
+                            Converter = new SignToColorConverter(),
+                            FallbackValue = Colors.Gray,
+                            TargetNullValue = Colors.Gray
+                        });
 
-    private static DataGridTemplateColumn CreatePreviousColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderTemplate = new DataTemplate(() => new Label
-            {
-                Text = header,
-                FontAttributes = FontAttributes.Bold,
-                LineBreakMode = LineBreakMode.NoWrap,
-                HorizontalTextAlignment = TextAlignment.Center,
-                VerticalTextAlignment = TextAlignment.Center
-            }),
-            CellTemplate = new DataTemplate(() =>
-            {
-                var label = new Label
-                {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
-                return label;
-            })
-        };
-    }
+                    horizontalLayout.Add(arrow);
+                    horizontalLayout.Add(valueLbl);
+                    return horizontalLayout;
+                })
+            },
 
-    private static DataGridTemplateColumn CreateOpenColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderText = header,
-            CellTemplate = new DataTemplate(() =>
+            "lasttrade" => new DataGridTemplateColumn
             {
-                var label = new Label
+                MappingName = mapping,
+                HeaderText = header,
+                HeaderTemplate = BoldCenteredHeader(header),
+                CellTemplate = new DataTemplate(() =>
                 {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
-                return label;
-            })
-        };
-    }
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center,
+                        Padding = new Thickness(8, 0)
+                    };
 
-    private static DataGridTemplateColumn CreateIdColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderText = header,
-            CellTemplate = new DataTemplate(() =>
-            {
-                var label = new Label
-                {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0}" });
-                return label;
-            })
-        };
-    }
+                    label.SetBinding(Label.TextProperty,
+                        new Binding(indexerPath) { StringFormat = "{0:0.00}" });
 
-    private static DataGridTemplateColumn CreateSymbolColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderText = header,
-            CellTemplate = new DataTemplate(() =>
-            {
-                var label = new Label
-                {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Center
-                };
-                label.SetBinding(Label.TextProperty, new Binding(indexerPath));
-                return label;
-            })
-        };
-    }
+                    if (!string.IsNullOrEmpty(changeKey))
+                    {
+                        var changeIndexer = $"[{changeKey}]";
+                        label.SetBinding(Label.TextColorProperty,
+                            new Binding(changeIndexer)
+                            {
+                                Converter = new SignToColorConverter(),
+                                FallbackValue = Colors.Gray,
+                                TargetNullValue = Colors.Gray
+                            });
+                    }
+                    else
+                    {
+                        label.TextColor = Colors.Gray;
+                    }
 
-    private static DataGridTemplateColumn CreateDefaultColumn(string mapping, string header, string indexerPath)
-    {
-        return new DataGridTemplateColumn
-        {
-            MappingName = mapping,
-            HeaderText = header,
-            CellTemplate = new DataTemplate(() =>
+                    return label;
+                })
+            },
+
+            "previousclose" or "previous" => new DataGridTemplateColumn
             {
-                var label = new Label
+                MappingName = mapping,
+                HeaderTemplate = BoldCenteredHeader(header),
+                CellTemplate = new DataTemplate(() =>
                 {
-                    VerticalTextAlignment = TextAlignment.Center,
-                    HorizontalTextAlignment = TextAlignment.Start
-                };
-                label.SetBinding(Label.TextProperty, new Binding(indexerPath));
-                return label;
-            })
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                    return label;
+                })
+            },
+
+            "open" => new DataGridTemplateColumn
+            {
+                MappingName = mapping,
+                HeaderText = header,
+                CellTemplate = new DataTemplate(() =>
+                {
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0:0.##}" });
+                    return label;
+                })
+            },
+
+            "id" => new DataGridTemplateColumn
+            {
+                MappingName = mapping,
+                HeaderText = header,
+                CellTemplate = new DataTemplate(() =>
+                {
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    label.SetBinding(Label.TextProperty, new Binding(indexerPath) { StringFormat = "{0}" });
+                    return label;
+                })
+            },
+
+            "symbol" => new DataGridTemplateColumn
+            {
+                MappingName = mapping,
+                HeaderText = header,
+                CellTemplate = new DataTemplate(() =>
+                {
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Center
+                    };
+                    label.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                    return label;
+                })
+            },
+
+            _ => new DataGridTemplateColumn
+            {
+                MappingName = mapping,
+                HeaderText = header,
+                CellTemplate = new DataTemplate(() =>
+                {
+                    var label = new Label
+                    {
+                        VerticalTextAlignment = TextAlignment.Center,
+                        HorizontalTextAlignment = TextAlignment.Start
+                    };
+                    label.SetBinding(Label.TextProperty, new Binding(indexerPath));
+                    return label;
+                })
+            }
         };
     }
 
@@ -510,15 +449,17 @@ public class StockViewModel
         return trim.StartsWith('{') || trim.StartsWith('[');
     }
 
-    private async Task LoadSnapshotAsync(CancellationToken cancelToken)
+    private async Task LoadSnapshotAsync(CancellationToken ct = default)
     {
-        var json = await _service.GetStocksJsonAsync(cancelToken).ConfigureAwait(false);
+        var json = await _service.GetStocksJsonAsync(ct).ConfigureAwait(false);
+
         if (string.IsNullOrWhiteSpace(json) || json == "null" || !LooksLikeJson(json))
         {
             SetHeaders(Array.Empty<string>());
             SetRows(new List<ExpandoObject>());
             return;
         }
+
         try
         {
             var token = JToken.Parse(json);
@@ -530,8 +471,6 @@ public class StockViewModel
             SetRows(new List<ExpandoObject>());
         }
     }
-
-    private Task LoadSnapshotAsync() => LoadSnapshotAsync(CancellationToken.None);
 
     /// <summary>
     /// Periodically loads a snapshot at the specified interval until cancellation is requested.
@@ -845,7 +784,7 @@ public class StockViewModel
                         var data = dataBuilder.ToString();
                         dataBuilder.Clear();
                         if (!string.IsNullOrWhiteSpace(eventName) && !string.IsNullOrWhiteSpace(data))
-                            ApplyFirebaseEvent(eventName!, data);
+                            HandleSseEventAsync(eventName!, data);
                         eventName = null;
                     }
                 }
@@ -862,7 +801,7 @@ public class StockViewModel
     /// </summary>
     /// <param name="eventName"></param>
     /// <param name="dataJson"></param>
-    private void ApplyFirebaseEvent(string eventName, string dataJson)
+    private void HandleSseEventAsync(string eventName, string dataJson)
     {
         var event_name = JsonConvert.DeserializeObject<JObject>(dataJson) ?? new JObject();
         var data = event_name["data"];
@@ -872,7 +811,7 @@ public class StockViewModel
             case "put":
                 if (!string.Equals(path, "/", StringComparison.Ordinal))
                 {
-                    LoadSnapshotAsync();
+                    _ = LoadSnapshotAsync();
                     return;
                 }
 
@@ -887,7 +826,7 @@ public class StockViewModel
                 }
                 break;
             case "patch":
-                LoadSnapshotAsync();
+                _ = LoadSnapshotAsync();
                 break;
         }
     }

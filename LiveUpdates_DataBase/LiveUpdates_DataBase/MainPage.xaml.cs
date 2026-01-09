@@ -17,7 +17,7 @@ namespace LiveUpdates_DataBase
                 if (BindingContext is StockViewModel viewModel)
                 {
                     await viewModel.InitializeAsync();
-                    viewModel.BuildGridColumns(grid);
+                    viewModel.CollectColumnKeys(grid);
                 }
             };
         }
@@ -37,7 +37,7 @@ namespace LiveUpdates_DataBase
                 return;
             }
 
-            viewModel.BuildGridColumns(grid);
+            viewModel.CollectColumnKeys(grid);
         }
     }
 }
