@@ -1,6 +1,7 @@
 using System.Globalization;
 
 namespace LiveUpdates_DataBase;
+
 /// <summary>
 /// Sign to Color converter
 /// </summary>
@@ -11,7 +12,11 @@ public sealed class SignToColorConverter : IValueConverter
     /// </summary>
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value == null) return Colors.Gray;
+        if (value == null)
+        {
+            return Colors.Gray;
+        }
+
         if (value is IConvertible convert)
         {
             var converter = System.Convert.ToDouble(convert, CultureInfo.InvariantCulture);
@@ -19,13 +24,14 @@ public sealed class SignToColorConverter : IValueConverter
             {
                 return Colors.ForestGreen;
             }
-
-            if (converter < 0)
+            else if (converter < 0)
             {
                 return Colors.IndianRed;
             }
-
-            return Colors.Gray;
+            else
+            {
+                return Colors.Gray;
+            }
         }
 
         return Colors.Gray;
@@ -47,21 +53,26 @@ public sealed class SignToArrowConverter : IValueConverter
     /// </summary>
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        if (value == null) return string.Empty;
+        if (value == null)
+        {
+            return string.Empty;
+        }
+
         if (value is IConvertible convert)
         {
             var converter = System.Convert.ToDouble(convert, CultureInfo.InvariantCulture);
             if (converter > 0)
             {
-                return "▲"; // up triangle
+                return "▲";
             }
-
-            if (converter < 0)
+            else if (converter < 0)
             {
-                return "▼"; // down triangle
+                return "▼";
             }
-
-            return string.Empty;
+            else
+            {
+                return string.Empty;
+            }
         }
 
         return string.Empty;

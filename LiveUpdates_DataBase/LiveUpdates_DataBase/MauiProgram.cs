@@ -17,8 +17,10 @@ namespace LiveUpdates_DataBase
                     fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
                 });
 
-			builder.Services.AddSingleton<StocksService>();      // Service for Firebase operations 
-            builder.Services.AddSingleton<StockViewModel>();     // ViewModel for binding to UI 
+            // Service for Firebase operations
+            builder.Services.AddSingleton<StocksService>();
+            // ViewModel for binding to UI      
+            builder.Services.AddSingleton<StockViewModel>();     
             builder.ConfigureSyncfusionCore();
 
 #if DEBUG

@@ -16,19 +16,36 @@ public class StockViewModel
 {
     #region Fields
 
+    /// <summary>
+    /// Header collection
+    /// </summary>
     public ObservableCollection<string> Headers { get; } = new();
+
+    /// <summary>
+    /// Enable remote simulation
+    /// </summary>
+    public bool EnableRemoteSimulation { get; set; } = true;
+
+    /// <summary>
+    /// Rows collection
+    /// </summary>
     public ObservableCollection<ExpandoObject> Rows { get; } = new();
+
+    /// <summary>
+    /// Remote simulation period
+    /// </summary>
+    public TimeSpan RemoteSimulationPeriod { get; set; } = TimeSpan.FromSeconds(0.75);
     private readonly StocksService _service = new();
     private CancellationTokenSource? _streamCts;
     private CancellationTokenSource? _pollCts;
     private CancellationTokenSource? _demoCts;
     private long _nextSequentialId = 1;
     private readonly Random _rand = new();
-    public bool EnableRemoteSimulation { get; set; } = true;
-    public TimeSpan RemoteSimulationPeriod { get; set; } = TimeSpan.FromSeconds(0.75);
     private CancellationTokenSource? _remoteSimCts;
 
     #endregion
+
+    #region Methods
 
     /// <summary>
     /// Builds and configures the columns of the specified SfDataGrid based on the current header and rows
@@ -50,8 +67,6 @@ public class StockViewModel
             grid.Columns.Add(CreateColumn(mapping, mappedHeader, indexerPath, changeKey));
         }
     }
-
-
 
     /// <summary>
     /// Builds a list of unique mapping names from the header and rows of the specified StockViewModel,
@@ -104,7 +119,6 @@ public class StockViewModel
     /// </summary>
     /// <param name="mappingNames"></param>
     /// <returns></returns>
-
     private static List<string> OrderColumnKeys(List<string> mappingNames)
     {
         var priorityCanonical = new[]
@@ -125,7 +139,6 @@ public class StockViewModel
             }
         }
 
-        // Append remaining keys in original order, without duplicates
         foreach (var k in mappingNames)
         {
             if (!ordered.Contains(k))
@@ -417,7 +430,9 @@ public class StockViewModel
 
         if (_remoteSimCts != null)
         {
-            _remoteSimCts.Cancel(); _remoteSimCts.Dispose(); _remoteSimCts = null;
+            _remoteSimCts.Cancel(); 
+            _remoteSimCts.Dispose(); 
+            _remoteSimCts = null;
         }
 
         await LoadSnapshotAsync();
@@ -438,7 +453,7 @@ public class StockViewModel
         }
     }
 
-    private static bool LooksLikeJson(string? stringValue)
+    private static bool CheckJson(string? stringValue)
     {
         if (string.IsNullOrWhiteSpace(stringValue))
         {
@@ -453,7 +468,7 @@ public class StockViewModel
     {
         var json = await _service.GetStocksJsonAsync(ct).ConfigureAwait(false);
 
-        if (string.IsNullOrWhiteSpace(json) || json == "null" || !LooksLikeJson(json))
+        if (string.IsNullOrWhiteSpace(json) || json == "null" || !CheckJson(json))
         {
             SetHeaders(Array.Empty<string>());
             SetRows(new List<ExpandoObject>());
@@ -552,7 +567,6 @@ public class StockViewModel
                                 dict["lastTrade"] = baseLt + deltaLt;
                             }
                         }
-
                         Rows[i] = Rows[i];
                     }
                 });
@@ -675,7 +689,6 @@ public class StockViewModel
                 {
                     Rows.Add(row);
                 }
-
                 return;
             }
 
@@ -760,8 +773,8 @@ public class StockViewModel
                     await Task.Delay(2000, cancelToken).ConfigureAwait(false);
                     continue;
                 }
-                using var reader = new StreamReader(stream);
 
+                using var reader = new StreamReader(stream);
                 string? eventName = null;
                 var dataBuilder = new StringBuilder();
                 while (!cancelToken.IsCancellationRequested)
@@ -825,9 +838,12 @@ public class StockViewModel
                     ProcessToken(data);
                 }
                 break;
+
             case "patch":
                 _ = LoadSnapshotAsync();
                 break;
         }
     }
+
+    #endregion
 }

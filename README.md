@@ -17,8 +17,7 @@ In today’s fast-paced digital world, real-time data is no longer a luxury—it
 
 ---
 
-## **Enhance UX with Visual Indicators**
-
+## Enhance UX with Visual Indicators
 Add **color coding** or **icons** to indicate trends:
 
 *   Green for positive changes
@@ -32,21 +31,31 @@ Example:
 ```
 
 ```C#
-
-internal class TextForegroundConverter : IValueConverter
+public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
 {
-    object? IValueConverter.Convert(object? value, Type targetType, object? parameter, CultureInfo info)
+    if (value == null)
     {
-        var data = value as double?;
-        if (data != null && data > 10)
+        return Colors.Gray;
+    }
+
+    if (value is IConvertible convert)
+    {
+        var converter = System.Convert.ToDouble(convert, CultureInfo.InvariantCulture);
+        if (converter > 0)
         {
-            return Colors.Green; // Positive value
+            return Colors.ForestGreen;
+        }
+        else if (converter < 0)
+        {
+            return Colors.IndianRed;
         }
         else
         {
-            return Colors.Red; // Negative or low value
+            return Colors.Gray;
         }
     }
+
+    return Colors.Gray;
 }
 ```
 
@@ -64,4 +73,10 @@ No manual refreshes, no flickering - just smooth, seamless live updates powered 
 Thanks for reading! In this blog, we’ve seen Mastering realtime data updates in [.NET MAUI DataGrid](https://www.syncfusion.com/maui-controls/maui-datagrid). Check out our [Release Notes](https://www.syncfusion.com/products/release-history) and [What’s New pages](https://www.syncfusion.com/products/whatsnew) to see the other updates in this release and leave your feedback in the comments section below. 
  For current Syncfusion customers, the newest version of Essential Studio is available from the [license and downloads page](https://www.syncfusion.com/Account/Login?ReturnUrl=%2faccount%2fdownloads). If you are not yet a customer, you can try our 30-day free [trial](https://www.syncfusion.com/downloads) to check out these new features. 
  For questions, you can contact us through our support [forums](https://www.syncfusion.com/forums), [feedback portal](https://www.syncfusion.com/feedback), or support [portal](https://support.syncfusion.com/). We are always happy to assist you!
+
+## Troubleshooting
+### Path Too Long Exception
+If you are facing a path too long exception when building this example project, close Visual Studio and rename the repository to short and build the project.
+ 
+For a step-by-step procedure, refer to the link.
 
