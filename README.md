@@ -71,5 +71,4 @@ Thanks for reading! In this blog, we’ve seen Mastering realtime data updates i
 ### Path Too Long Exception
 If you are facing a path too long exception when building this example project, close Visual Studio and rename the repository to short and build the project.
  
-For a step-by-step procedure, refer to the link.
-
+For a step-by-step procedure, refer to the [Stream Live Data in .NET MAUI DataGrid using Firbase](https://www.syncfusion.com/blogs/post/stream-live-data-maui-datagrid-firebase) blog.
